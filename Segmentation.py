@@ -62,18 +62,18 @@ def Label_Super_Pixels(segments, grabcut):
     segments_label = [1 if cnt>0 else 0 for cnt in segments_cnt]
 
     rows,columns = np.array(segments).shape
-
+    segments_pixels = [[0 for col in range(columns)] for row in range(rows)]
     for i in range(rows):
         for j in range(columns):
-            segments[i][j] = segments_label[segments[i][j]-1]
+            segments_pixels[i][j] = segments_label[segments[i][j]-1]
 
-    return segments,segments_label
+    return segments,segments_pixels,segments_label
 
 
 # main function
 if __name__ == "__main__":
     img = 'image.jpg'
     
-    segments,segments_label = Label_Super_Pixels(Super_Pixels(img), Grab_Cut(img))
+    segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(img), Grab_Cut(img))
 
-    draw(io.imread(img), segments)
+    draw(io.imread(img), segments_pixels)
