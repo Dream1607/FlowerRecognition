@@ -42,7 +42,7 @@ def Super_Pixels(img):
     image = img_as_float(io.imread(img))
 
 	# apply SLIC and extract (approximately) the supplied number
-    numSegments = 200
+    numSegments = 100
     
     # of segments
     segments = slic(image, n_segments = numSegments, sigma = 5)
@@ -50,7 +50,7 @@ def Super_Pixels(img):
     return segments
 
 def Label_Super_Pixels(segments, grabcut):
-    segments_num = max(max(row) for row in segments)
+    segments_num = max(max(row) for row in segments) + 1
     segments_cnt = np.zeros(segments_num)
 
     # count the majority of 0/1
