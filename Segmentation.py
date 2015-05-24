@@ -3,6 +3,7 @@ import cPickle as pickle
 
 import numpy as np
 
+import os
 import math
 
 from PIL import Image
@@ -167,57 +168,57 @@ def Location_Shape_Color(img,segments,segments_label):
 
     return Location_Shape_Color_Features
 
-def pickle_keypoints(keypoints, descriptors):
-    i = 0
-    temp_array = []
+def Class_SIFT_Features_Extract(img_folder):
+    Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
+    Class_SIFT_Points = []
+    Class_SIFT_Features = []
 
-    for point in keypoints:
-        temp_array.append((point.pt, point.size, point.angle, point.response, point.octave, point.class_id, descriptors[i]))
-        i = i + 1
+    for index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") +image_name
+        img =  cv2.imread(image_path)
 
-    return np.array(temp_array)
+        sift = cv2.xfeatures2d.SIFT_create()
+        keypoints,des = sift.detectAndCompute(img,None)
 
-def unpickle_keypoints(array):
-    keypoints = []
-    descriptors = []
+        k = 0
 
-    for point in array:
-        temp_feature = cv2.KeyPoint(x=point[0][0],y=point[0][1],_size=point[1], _angle=point[2], _response=point[3], _octave=point[4], _class_id=point[5])
-        temp_descriptor = point[6]
-        keypoints.append(temp_feature)
-        descriptors.append(temp_descriptor)
+        for point in keypoints:
+            Class_SIFT_Points += [point.pt]
+            Class_SIFT_Features.append(des[k])
+            k += 1
 
-    return keypoints, np.array(descriptors)
+        Class_Superpixels_Num[index] = max(max(row) for row in Super_Pixels(image_path)) + 1
 
-def SIFT_extract(img):
-    sift = cv2.xfeatures2d.SIFT_create()
+    # Get CodeBook of Class_SIFT_Features
+    Class_SIFT_Features = np.float32(Class_SIFT_Features)
 
-    kp,des = sift.detectAndCompute(img,None)
-    temp = pickle_keypoints(kp, des)
+    # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
 
-    # img = cv2.drawKeypoints(img,kp,img)
-    # plt.imshow(img),plt.show()
-    return temp
+    # Set flags (Just to avoid line break in the code)
+    flags = cv2.KMEANS_RANDOM_CENTERS
 
-def Superpixel_SIFT(image_SIFT,segments,segments_label):
-    SIFT_Features = [[] for y in range(len(segments_label))]
-    for index, input_vector in enumerate(image_SIFT):
-        x = int(round(input_vector[0][1]))
-        y = int(round(input_vector[0][0]))
-        SIFT_Features[segments[x][y]].append(input_vector[6])
+    # Apply KMeans
+    compactness,labels,centers = cv2.kmeans(Class_SIFT_Features,800,None,criteria,10,flags)
 
-    for index, vectors in enumerate(SIFT_Features):
-        len_v = 128
-        mean_vector = np.zeros(len_v)
-        if len(vectors) != 0:
-            for i in range(len(vectors)):
-                mean_vector += vectors[i]
-            SIFT_Features[index] = (mean_vector/(len(vectors))).tolist()
-        else:
-            SIFT_Features[index] = mean_vector.tolist()
+    Superpixel_SIFT_Features = [[0 for x in range(800)] for y in range(sum(Class_Superpixels_Num))]
 
-    return SIFT_Features
+    for image_index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") +image_name
+        img =  cv2.imread(image_path)
 
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(image_path))
+        rows, columns = np.array(segments).shape
+        num = sum(Class_Superpixels_Num[0:image_index])
+        for index, input_vector in enumerate(Class_SIFT_Points):
+            x = int(round(input_vector[1])) if int(round(input_vector[1])) < columns else columns - 1
+            y = int(round(input_vector[0])) if int(round(input_vector[0])) < rows else rows - 1
+
+            Superpixel_SIFT_Features[segments[x][y] + num][labels[index]] += 1
+        print "image" 
+        print image_index
+
+    print Superpixel_SIFT_Features
 
 # main function
 if __name__ == "__main__":
@@ -229,11 +230,9 @@ if __name__ == "__main__":
 
     Center_Boundary_Features = Center_Boundary(segments,segments_label)
     Location_Shape_Color_Features = Location_Shape_Color(img_cv2,segments,segments_label)
-    SIFT_Features = Superpixel_SIFT(SIFT_extract(img_cv2),segments,segments_label)
+    Class_SIFT_Features = Class_SIFT_Features_Extract('image')
 
     Superpixel_Features = []
     for i in range(len(segments_label)):
         Features = Center_Boundary_Features[i] + Location_Shape_Color_Features[i] + SIFT_Features[i]
         Superpixel_Features.append(map(int,Features))
-
-    print Superpixel_Features
