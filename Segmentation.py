@@ -9,6 +9,9 @@ from skimage.util import img_as_float
 from skimage.segmentation import slic
 from skimage.segmentation import mark_boundaries
 
+from sklearn import svm
+from sklearn import datasets,metrics
+
 def draw(img,mask):
     rows,columns,rgb = img.shape
 
@@ -69,6 +72,20 @@ def Label_Super_Pixels(segments, grabcut):
 
     return segments,segments_pixels,segments_label
 
+def SuperPixels_Segmentation_Adjust(features, label):
+    # features are all the superpixels' features of the same class
+    clf = svm.LinearSVC(C=10, loss='hinge')
+    clf.fit(features,label)
+
+    # predict itself
+    predicted = clf.predict(features)
+
+    # report
+    print "Classification report for classifier %s:\n%s\n" % (
+    clf, metrics.classification_report(label, predicted))
+    print "Confusion matrix:\n%s" % metrics.confusion_matrix(label, predicted)
+
+    return predicted
 
 # main function
 if __name__ == "__main__":
