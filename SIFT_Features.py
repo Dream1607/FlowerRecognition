@@ -17,9 +17,8 @@ def pickle_keypoints(keypoints, descriptors):
 	temp_array = []
 
 	for point in keypoints:
-		temp = (point.pt, point.size, point.angle, point.response, point.octave, point.class_id, descriptors[i]) 
-		temp_array.append(temp)
-		++i
+		temp_array.append((point.pt, point.size, point.angle, point.response, point.octave, point.class_id, descriptors[i]))
+		i = i + 1
 
 	return np.array(temp_array)
 
@@ -43,7 +42,6 @@ def SIFT_extract(img):
 
 	# img = cv2.drawKeypoints(img,kp,img)
 	# plt.imshow(img),plt.show()
-
 	return temp
 
 def Superpixel_SIFT(image_SIFT):
@@ -53,8 +51,17 @@ def Superpixel_SIFT(image_SIFT):
 	for index, input_vector in enumerate(image_SIFT):
 		x = int(round(input_vector[0][1]))
 		y = int(round(input_vector[0][0]))
-		label = segments[x][y]
-		Super_Pixels_Features[label].append(input_vector)
+		Super_Pixels_Features[segments[x][y]].append(input_vector[6])
+	
+	for index, vectors in enumerate(Super_Pixels_Features):
+		len_v = 128
+		mean_vector = np.zeros(len_v)
+		if len(vectors) != 0:
+			for i in range(len(vectors)):
+				mean_vector += vectors[i]
+			Super_Pixels_Features[index] = mean_vector/(len(vectors))
+		else:
+			Super_Pixels_Features[index] = mean_vector
 
 	return np.array(Super_Pixels_Features)
 
@@ -67,19 +74,3 @@ if __name__ == "__main__":
 	image_SIFT = SIFT_extract(img)
 
 	Super_Pixels_Features = Superpixel_SIFT(image_SIFT)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

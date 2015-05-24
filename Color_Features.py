@@ -13,7 +13,6 @@ from skimage.segmentation import slic
 from skimage.segmentation import mark_boundaries
 
 def Superpixel_Color_Hist(img):
-	b, g, r = cv2.split(img)
 	segments,segments_pixels,segments_label = Segmentation.Label_Super_Pixels(Segmentation.Super_Pixels(image), Segmentation.Grab_Cut(image))
 
 	Color_Hist_Features = [[] for y in range(len(segments_label))] 
@@ -25,13 +24,14 @@ def Superpixel_Color_Hist(img):
 			for j in range(columns):
 				mask[i][j] = (255 if segments[i][j] == label else 0)
 
-		hist_mask_b = cv2.calcHist([img],[0],mask,[256],[0,256])
-		hist_mask_g = cv2.calcHist([img],[1],mask,[256],[0,256])
-		hist_mask_r = cv2.calcHist([img],[2],mask,[256],[0,256])
+		hist_mask_b = cv2.calcHist([img],[0],mask,[64],[0,256])
+		hist_mask_g = cv2.calcHist([img],[1],mask,[64],[0,256])
+		hist_mask_r = cv2.calcHist([img],[2],mask,[64],[0,256])
 
 		Color_Hist_Features[label].append(hist_mask_b)
 		Color_Hist_Features[label].append(hist_mask_g)
 		Color_Hist_Features[label].append(hist_mask_r)
+		Color_Hist_Features[label] = np.array(Color_Hist_Features[label]).flatten()
 
 	return np.array(Color_Hist_Features)
 
