@@ -119,13 +119,13 @@ def Segment_Mask(segments,label):
     mask = [1 if i^label==0 else 0 for i in segments.flatten()]
     return np.array(mask, np.uint8).reshape(segments.shape)
 
-def Location_Shape_Color(img,segments,segments_label):
+def Location_Shape(img,segments,segments_label):
     # 72-D Feature
     row,col = segments.shape
     location_block_row = int(math.ceil(row/6.))
     location_block_col = int(math.ceil(col/6.))
 
-    Location_Shape_Color_Features = []
+    Location_Shape_Features = []
     for label in range(len(segments_label)):
         # Make mask for each segment
         seg_mask = Segment_Mask(segments, label)
@@ -154,19 +154,54 @@ def Location_Shape_Color(img,segments,segments_label):
         # Convert to 36-D Shape Features
         Shape_Features = downsample.flatten().tolist()
 
-        ### Get Color Hist Features
-        Color_Hist_Features = []
-        hist_mask_b = cv2.calcHist([img],[0],seg_mask,[64],[0,256])
-        hist_mask_g = cv2.calcHist([img],[1],seg_mask,[64],[0,256])
-        hist_mask_r = cv2.calcHist([img],[2],seg_mask,[64],[0,256])
+        Location_Shape_Features.append(Location_Features+Shape_Features)
 
-        Color_Hist_Features.append(hist_mask_b)
-        Color_Hist_Features.append(hist_mask_g)
-        Color_Hist_Features.append(hist_mask_r)
-        Color_Hist_Features = np.array(Color_Hist_Features).flatten().tolist()
-        Location_Shape_Color_Features.append(Location_Features+Shape_Features+Color_Hist_Features)
+    return Location_Shape_Features
 
-    return Location_Shape_Color_Features
+def Class_Color_Features_Extract(img_folder):
+    Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
+    Class_Pixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
+    Class_Color_Features = []
+
+    for index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") +image_name
+
+        image = cv2.imread(image_path)
+        rows, columns, bgr = image.shape
+        Class_Color_Features += image.reshape((rows * columns,bgr)).tolist()
+
+        Class_Pixels_Num[index] = rows * columns
+        Class_Superpixels_Num[index] = max(max(row) for row in Super_Pixels(image_path)) + 1
+        
+    # Get CodeBook of Class_Color_Features
+    Class_Color_Features = np.float32(Class_Color_Features)
+
+    # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+
+    # Set flags (Just to avoid line break in the code)
+    flags = cv2.KMEANS_RANDOM_CENTERS
+
+    # Apply KMeans
+    compactness,labels,centers = cv2.kmeans(Class_Color_Features,200,None,criteria,10,flags)
+
+    Superpixel_Color_Features = [[0 for x in range(200)] for y in range(sum(Class_Superpixels_Num))]
+
+    for image_index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") +image_name
+        img =  cv2.imread(image_path)
+
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(image_path))
+        rows, columns = np.array(segments).shape
+        superpixels_num = sum(Class_Superpixels_Num[0:image_index])
+        pixels_num = sum(Class_Pixels_Num[0:image_index])
+        
+        for x in range(rows):
+            for y in range(columns):
+                Superpixel_Color_Features[segments[x][y] + superpixels_num][labels[columns * x + y + pixels_num]] += 1
+        print "image_" + str(image_index)
+
+    return Superpixel_Color_Features
 
 def Class_SIFT_Features_Extract(img_folder):
     Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
@@ -210,15 +245,15 @@ def Class_SIFT_Features_Extract(img_folder):
         segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(image_path))
         rows, columns = np.array(segments).shape
         num = sum(Class_Superpixels_Num[0:image_index])
+        
         for index, input_vector in enumerate(Class_SIFT_Points):
             x = int(round(input_vector[1])) if int(round(input_vector[1])) < columns else columns - 1
             y = int(round(input_vector[0])) if int(round(input_vector[0])) < rows else rows - 1
 
             Superpixel_SIFT_Features[segments[x][y] + num][labels[index]] += 1
-        print "image" 
-        print image_index
+        print "image_" + str(image_index)
 
-    print Superpixel_SIFT_Features
+    return Superpixel_SIFT_Features
 
 # main function
 if __name__ == "__main__":
@@ -229,10 +264,11 @@ if __name__ == "__main__":
     segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(img),Grab_Cut(img))
 
     Center_Boundary_Features = Center_Boundary(segments,segments_label)
-    Location_Shape_Color_Features = Location_Shape_Color(img_cv2,segments,segments_label)
+    Location_Shape_Features = Location_Shape(img_cv2,segments,segments_label)
+    Class_Color_Features = Class_Color_Features_Extract('image')
     Class_SIFT_Features = Class_SIFT_Features_Extract('image')
 
     Superpixel_Features = []
     for i in range(len(segments_label)):
-        Features = Center_Boundary_Features[i] + Location_Shape_Color_Features[i] + SIFT_Features[i]
+        Features = Center_Boundary_Features[i] + Location_Shape_Features[i] + Class_Color_Features[i] + Class_SIFT_Features[i]
         Superpixel_Features.append(map(int,Features))
