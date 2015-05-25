@@ -5,6 +5,7 @@ class DB(object):
     def __init__(self, db_name):
         try:
             self.conn = MySQLdb.connect(host='localhost',user='root',passwd='',db=db_name,charset="utf8")
+            self.conn.autocommit(True)
         except Exception, e:
             print e
 
