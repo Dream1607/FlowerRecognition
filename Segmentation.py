@@ -5,6 +5,7 @@ import numpy as np
 
 import os
 import math
+import datetime
 
 from PIL import Image
 from matplotlib import pyplot as plt
@@ -170,6 +171,9 @@ def Location_Shape(img,segments,segments_label):
     return Location_Shape_Features
 
 def Class_Location_Shape_CB_Features_Extract(img_folder):
+    print "Class_Location_Shape_CB_Features_Extract Start"
+    starttime = datetime.datetime.now()
+
     Class_Location_Shape_CB_Features = []
 
     ### IMAGES SHOULD BE READ IN ORDER!!!
@@ -188,9 +192,55 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
             Features = Center_Boundary_Features[i] + Location_Shape_Features[i]
             Class_Location_Shape_CB_Features.append(map(int,Features))
 
+    endtime = datetime.datetime.now()
+    print "Time: " + str((endtime - starttime).seconds) + "s"
+    print "Class_Location_Shape_CB_Features_Extract End"
+
     return Class_Location_Shape_CB_Features
 
+def Class_Size_Features_Extract(img_folder):
+    print "Class_Size_Features_Extract Start"
+    starttime = datetime.datetime.now()
+
+    Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
+    Class_Size_Features = []
+
+    for index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") +image_name
+
+        segments = Super_Pixels(image_path)
+
+        Class_Size_Features.append(np.histogram([y for sublist in segments for y in sublist], bins = max(max(row) for row in segments) + 1)[0].tolist())
+
+        Class_Superpixels_Num[index] = max(max(row) for row in segments) + 1
+
+    # Format        
+    Class_Size_Features = [[x] for x in [y for sublist in Class_Size_Features for y in sublist]]
+
+    # Get CodeBook of Class_Color_Features
+    Class_Size_Features = np.float32(Class_Size_Features)
+
+    # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+
+    # Set flags (Just to avoid line break in the code)
+    flags = cv2.KMEANS_RANDOM_CENTERS
+
+    # Apply KMeans
+    compactness,labels,centers = cv2.kmeans(Class_Size_Features,2,None,criteria,10,flags)
+
+    Superpixel_Size_Features = labels.tolist()
+
+    endtime = datetime.datetime.now()
+    print "Time: " + str((endtime - starttime).seconds) + "s"
+    print "Class_Size_Features_Extract End"
+
+    return Superpixel_Size_Features
+
 def Class_Color_Features_Extract(img_folder):
+    print "Class_Color_Features_Extract Start"
+    starttime = datetime.datetime.now()
+
     Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
     Class_Pixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
     Class_Color_Features = []
@@ -233,9 +283,16 @@ def Class_Color_Features_Extract(img_folder):
                 Superpixel_Color_Features[segments[x][y] + superpixels_num][labels[columns * x + y + pixels_num]] += 1
         print "image_" + str(image_index)
 
+    endtime = datetime.datetime.now()
+    print "Time: " + str((endtime - starttime).seconds) + "s"
+    print "Class_Color_Features_Extract End"
+
     return Superpixel_Color_Features
 
 def Class_SIFT_Features_Extract(img_folder):
+    print "Class_SIFT_Features_Extract Start"
+    starttime = datetime.datetime.now()
+
     Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
     Class_SIFT_Points = []
     Class_SIFT_Features = []
@@ -285,6 +342,10 @@ def Class_SIFT_Features_Extract(img_folder):
             Superpixel_SIFT_Features[segments[x][y] + num][labels[index]] += 1
         print "image_" + str(image_index)
 
+    endtime = datetime.datetime.now()
+    print "Time: " + str((endtime - starttime).seconds) + "s"
+    print "Class_SIFT_Features_Extract End"
+
     return Superpixel_SIFT_Features
 
 def Get_Group_Features(img_folder):
@@ -292,12 +353,14 @@ def Get_Group_Features(img_folder):
 
     Class_Location_Shape_CB_Features = Class_Location_Shape_CB_Features_Extract(img_folder)
 
+    Class_Size_Features = Class_Size_Features_Extract(img_folder)
+
     Class_Color_Features = Class_Color_Features_Extract(img_folder)
 
     Class_SIFT_Features = Class_SIFT_Features_Extract(img_folder)
 
     ### Merge Features
-    Superpixel_Features = [ x + y + z for x,y,z in zip(Class_Location_Shape_CB_Features,Class_Color_Features,Class_SIFT_Features)]
+    Superpixel_Features = [ x + y + z + w for x,y,z,w in zip(Class_Location_Shape_CB_Features,Class_Size_Features,Class_Color_Features,Class_SIFT_Features)]
 
     print np.array(Superpixel_Features)
     print np.array(Superpixel_Features).shape
@@ -308,5 +371,5 @@ def Get_Group_Features(img_folder):
 if __name__ == "__main__":
 
     img_folder = 'image'
-
+    
     Superpixel_Features = Get_Group_Features(img_folder)
