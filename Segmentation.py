@@ -48,9 +48,9 @@ def Grab_Cut(img):
 
     return mask2
 
-def Super_Pixels(img):
+def Super_Pixels(img_name):
     # load the image and convert it to a floating point data type
-    image = img_as_float(img)
+    image = img_as_float(io.imread(img_name))
 
 	# apply SLIC and extract (approximately) the supplied number
     numSegments = 100
@@ -169,6 +169,27 @@ def Location_Shape(img,segments,segments_label):
 
     return Location_Shape_Features
 
+def Class_Location_Shape_CB_Features_Extract(img_folder):
+    Class_Location_Shape_CB_Features = []
+
+    ### IMAGES SHOULD BE READ IN ORDER!!!
+    for index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") + image_name
+        img = cv2.imread(image_path)
+
+        ### GrabCut & SLIC
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
+
+        ### Get Single Image's Superpixels Location, Shape, Center & Boundary Features
+        Center_Boundary_Features = Center_Boundary(segments,segments_label)
+        Location_Shape_Features = Location_Shape(img,segments,segments_label)
+
+        for i in range(len(segments_label)):
+            Features = Center_Boundary_Features[i] + Location_Shape_Features[i]
+            Class_Location_Shape_CB_Features.append(map(int,Features))
+
+    return Class_Location_Shape_CB_Features
+
 def Class_Color_Features_Extract(img_folder):
     Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
     Class_Pixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
@@ -202,7 +223,7 @@ def Class_Color_Features_Extract(img_folder):
         image_path = img_folder + str("/") +image_name
         img =  cv2.imread(image_path)
 
-        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(image_path))
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
         rows, columns = np.array(segments).shape
         superpixels_num = sum(Class_Superpixels_Num[0:image_index])
         pixels_num = sum(Class_Pixels_Num[0:image_index])
@@ -253,7 +274,7 @@ def Class_SIFT_Features_Extract(img_folder):
         image_path = img_folder + str("/") +image_name
         img =  cv2.imread(image_path)
 
-        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(image_path))
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
         rows, columns = np.array(segments).shape
         num = sum(Class_Superpixels_Num[0:image_index])
         
@@ -267,34 +288,19 @@ def Class_SIFT_Features_Extract(img_folder):
     return Superpixel_SIFT_Features
 
 def Get_Group_Features(img_folder):
-    # Given a path of folder
-    # Return all the pixels' features * 1076-D List
+    # Given a path of folder, return all the super pixels' features(1076-D) List
 
+    Class_Location_Shape_CB_Features = Class_Location_Shape_CB_Features_Extract(img_folder)
 
-    Superpixel_Features = []
+    Class_Color_Features = Class_Color_Features_Extract(img_folder)
 
-    ### IMAGES SHOULD BE READ IN ORDER!!!
-    for index, image_name in enumerate(os.listdir(img_folder)):
-        image_path = img_folder + str("/") + image_name
-        img = cv2.imread(image_path)
-
-        ### GrabCut & SLIC
-        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(img),Grab_Cut(img))
-
-        ### Get Single Image's Superpixels Location, Shape, Center & Boundary Features
-        Center_Boundary_Features = Center_Boundary(segments,segments_label)
-        Location_Shape_Features = Location_Shape(img,segments,segments_label)
-
-        for i in range(len(segments_label)):
-            Features = Center_Boundary_Features[i] + Location_Shape_Features[i]
-            Superpixel_Features.append(map(int,Features))
-
-    ### Get Group Features Together
-    # Class_Color_Features = Class_Color_Features_Extract('image')
-    # Class_SIFT_Features = Class_SIFT_Features_Extract('image')
+    Class_SIFT_Features = Class_SIFT_Features_Extract(img_folder)
 
     ### Merge Features
+    Superpixel_Features = [ x + y + z for x,y,z in zip(Class_Location_Shape_CB_Features,Class_Color_Features,Class_SIFT_Features)]
 
+    print np.array(Superpixel_Features)
+    print np.array(Superpixel_Features).shape
     ### Save to database
     return Superpixel_Features
 
