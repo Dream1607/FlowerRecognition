@@ -17,17 +17,20 @@ from skimage.measure import block_reduce
 from sklearn import svm
 from sklearn import datasets,metrics
 
-def draw(img,mask):
+def draw(img,mask,save = False):
     rows,columns,rgb = img.shape
 
     for i in range(rows):
         for j in range(columns):
             img[i][j]*=mask[i][j]
-    plt.imshow(img),plt.show()
+    plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    plt.axis('off')
+    if save == False:
+        plt.show()
+    else:
+        plt.savefig('/Users/Yao/Desktop/flower_results/'+save+'_result.jpg')
 
 def Grab_Cut(img):
-    # Loading image
-    img = cv2.imread(img)
     height, weight, rgb = img.shape
 
     # mask initialized to PR_BG
@@ -47,7 +50,7 @@ def Grab_Cut(img):
 
 def Super_Pixels(img):
     # load the image and convert it to a floating point data type
-    image = img_as_float(io.imread(img))
+    image = img_as_float(img)
 
 	# apply SLIC and extract (approximately) the supplied number
     numSegments = 100
@@ -79,7 +82,7 @@ def Label_Super_Pixels(segments, grabcut):
 
 def SuperPixels_Segmentation_Adjust(features, label):
     # features are all the superpixels' features of the same class
-    clf = svm.LinearSVC(C=10, loss='hinge')
+    clf = svm.LinearSVC(loss='l1',C=10)
     clf.fit(features,label)
 
     # predict itself
@@ -146,10 +149,18 @@ def Location_Shape(img,segments,segments_label):
 
         # Downsample to 6*6
         cropped_row,cropped_col = cropped_mask.shape
+
+        ### When the number is too small, there would be a bug
+        ### Consider this special situation
+        if cropped_row < 26:
+            cropped_mask = cropped_mask[:(cropped_row-cropped_row%6),:]
+        if cropped_col < 26:
+            cropped_mask = cropped_mask[:,:(cropped_col-cropped_col%6)]
+
+        cropped_row,cropped_col = cropped_mask.shape
         cropped_block_row = int(math.ceil(cropped_row/6.))
         cropped_block_col = int(math.ceil(cropped_col/6.))
         downsample = block_reduce(cropped_mask, block_size=(cropped_block_row, cropped_block_col), cval = 0, func=np.max)
-
 
         # Convert to 36-D Shape Features
         Shape_Features = downsample.flatten().tolist()
@@ -255,20 +266,41 @@ def Class_SIFT_Features_Extract(img_folder):
 
     return Superpixel_SIFT_Features
 
-# main function
-if __name__ == "__main__":
-    img = 'image.jpg'
+def Get_Group_Features(img_folder):
+    # Given a path of folder
+    # Return all the pixels' features * 1076-D List
 
-    img_cv2 = cv2.imread(img)
-
-    segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(img),Grab_Cut(img))
-
-    Center_Boundary_Features = Center_Boundary(segments,segments_label)
-    Location_Shape_Features = Location_Shape(img_cv2,segments,segments_label)
-    Class_Color_Features = Class_Color_Features_Extract('image')
-    Class_SIFT_Features = Class_SIFT_Features_Extract('image')
 
     Superpixel_Features = []
-    for i in range(len(segments_label)):
-        Features = Center_Boundary_Features[i] + Location_Shape_Features[i] + Class_Color_Features[i] + Class_SIFT_Features[i]
-        Superpixel_Features.append(map(int,Features))
+
+    ### IMAGES SHOULD BE READ IN ORDER!!!
+    for index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") + image_name
+        img = cv2.imread(image_path)
+
+        ### GrabCut & SLIC
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(img),Grab_Cut(img))
+
+        ### Get Single Image's Superpixels Location, Shape, Center & Boundary Features
+        Center_Boundary_Features = Center_Boundary(segments,segments_label)
+        Location_Shape_Features = Location_Shape(img,segments,segments_label)
+
+        for i in range(len(segments_label)):
+            Features = Center_Boundary_Features[i] + Location_Shape_Features[i]
+            Superpixel_Features.append(map(int,Features))
+
+    ### Get Group Features Together
+    # Class_Color_Features = Class_Color_Features_Extract('image')
+    # Class_SIFT_Features = Class_SIFT_Features_Extract('image')
+
+    ### Merge Features
+
+    ### Save to database
+    return Superpixel_Features
+
+# main function
+if __name__ == "__main__":
+
+    img_folder = 'image'
+
+    Superpixel_Features = Get_Group_Features(img_folder)
