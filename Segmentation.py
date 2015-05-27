@@ -250,11 +250,21 @@ def Class_Color_Features_Extract(img_folder):
 
         image = cv2.imread(image_path)
         rows, columns, bgr = image.shape
-        Class_Color_Features += image.reshape((rows * columns,bgr)).tolist()
 
-        Class_Pixels_Num[index] = rows * columns
+        # Make densely-sampling color features
+        pixel_index = 0
+        densely_sampling_pixels_number = 0
+
+        for x in range(rows):
+            for y in range(columns):
+                if pixel_index % 6 == 0:
+                    Class_Color_Features.append(image[x][y].tolist())
+                    densely_sampling_pixels_number += 1
+                pixel_index += 1
+
+        Class_Pixels_Num[index] = densely_sampling_pixels_number
         Class_Superpixels_Num[index] = max(max(row) for row in Super_Pixels(image_path)) + 1
-        
+    
     # Get CodeBook of Class_Color_Features
     Class_Color_Features = np.float32(Class_Color_Features)
 
@@ -278,9 +288,16 @@ def Class_Color_Features_Extract(img_folder):
         superpixels_num = sum(Class_Superpixels_Num[0:image_index])
         pixels_num = sum(Class_Pixels_Num[0:image_index])
         
+        pixel_index = 0
+        densely_sampling_pixels_number = 0
+
         for x in range(rows):
             for y in range(columns):
-                Superpixel_Color_Features[segments[x][y] + superpixels_num][labels[columns * x + y + pixels_num]] += 1
+                if pixel_index % 6 == 0:
+                    Superpixel_Color_Features[segments[x][y] + superpixels_num][labels[densely_sampling_pixels_number + pixels_num]] += 1
+                    densely_sampling_pixels_number += 1
+                pixel_index += 1
+
         print "image_" + str(image_index)
 
     endtime = datetime.datetime.now()
@@ -336,8 +353,8 @@ def Class_SIFT_Features_Extract(img_folder):
         num = sum(Class_Superpixels_Num[0:image_index])
         
         for index, input_vector in enumerate(Class_SIFT_Points):
-            x = int(round(input_vector[1])) if int(round(input_vector[1])) < columns else columns - 1
-            y = int(round(input_vector[0])) if int(round(input_vector[0])) < rows else rows - 1
+            x = int(round(input_vector[1])) if int(round(input_vector[1])) < rows else rows - 1
+            y = int(round(input_vector[0])) if int(round(input_vector[0])) < columns else columns - 1
 
             Superpixel_SIFT_Features[segments[x][y] + num][labels[index]] += 1
         print "image_" + str(image_index)
