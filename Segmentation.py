@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import cv2
 import cPickle as pickle
 
@@ -18,7 +19,7 @@ from skimage.measure import block_reduce
 from sklearn import svm
 from sklearn import datasets,metrics
 
-def draw(img,mask,save = False):
+def draw(img,mask,save_name = False):
     rows,columns,rgb = img.shape
 
     for i in range(rows):
@@ -26,10 +27,12 @@ def draw(img,mask,save = False):
             img[i][j]*=mask[i][j]
     plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     plt.axis('off')
-    if save == False:
+    if save_name == False:
         plt.show()
     else:
-        plt.savefig('/Users/Yao/Desktop/flower_results/'+save+'_result.jpg')
+        plt.subplots_adjust(left=None, bottom=None, right=None, top=None,
+                            wspace=None, hspace=None)
+        plt.savefig(save_name+'_result.jpg')
 
 def Grab_Cut(img):
     height, weight, rgb = img.shape
@@ -175,7 +178,7 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
     starttime = datetime.datetime.now()
 
     Class_Location_Shape_CB_Features = []
-
+    Labels = []
     ### IMAGES SHOULD BE READ IN ORDER!!!
     for index, image_name in enumerate(os.listdir(img_folder)):
         image_path = img_folder + str("/") + image_name
@@ -183,6 +186,10 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
 
         ### GrabCut & SLIC
         segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
+        Labels+=segments_label
+
+        ### Save figs before segmentation
+        draw(img,segments_pixels,save_name = image_name.split('.')[0])
 
         ### Get Single Image's Superpixels Location, Shape, Center & Boundary Features
         Center_Boundary_Features = Center_Boundary(segments,segments_label)
@@ -196,7 +203,7 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
     print "Time: " + str((endtime - starttime).seconds) + "s"
     print "Class_Location_Shape_CB_Features_Extract End"
 
-    return Class_Location_Shape_CB_Features
+    return Class_Location_Shape_CB_Features, Labels
 
 def Class_Size_Features_Extract(img_folder):
     print "Class_Size_Features_Extract Start"
@@ -298,8 +305,6 @@ def Class_Color_Features_Extract(img_folder):
                     densely_sampling_pixels_number += 1
                 pixel_index += 1
 
-        print "image_" + str(image_index)
-
     endtime = datetime.datetime.now()
     print "Time: " + str((endtime - starttime).seconds) + "s"
     print "Class_Color_Features_Extract End"
@@ -368,7 +373,7 @@ def Class_SIFT_Features_Extract(img_folder):
 def Get_Group_Features(img_folder):
     # Given a path of folder, return all the super pixels' features(1076-D) List
 
-    Class_Location_Shape_CB_Features = Class_Location_Shape_CB_Features_Extract(img_folder)
+    Class_Location_Shape_CB_Features, Labels = Class_Location_Shape_CB_Features_Extract(img_folder)
 
     Class_Size_Features = Class_Size_Features_Extract(img_folder)
 
@@ -379,14 +384,27 @@ def Get_Group_Features(img_folder):
     ### Merge Features
     Superpixel_Features = [ x + y + z + w for x,y,z,w in zip(Class_Location_Shape_CB_Features,Class_Size_Features,Class_Color_Features,Class_SIFT_Features)]
 
-    print np.array(Superpixel_Features)
-    print np.array(Superpixel_Features).shape
+    # print np.array(Superpixel_Features)
+    # print np.array(Superpixel_Features).shape
     ### Save to database
-    return Superpixel_Features
+    return Superpixel_Features,Labels
 
 # main function
 if __name__ == "__main__":
 
     img_folder = 'image'
-    
-    Superpixel_Features = Get_Group_Features(img_folder)
+
+    Superpixel_Features, Labels = Get_Group_Features(img_folder)
+    predicted = SuperPixels_Segmentation_Adjust(Superpixel_Features, Labels)
+
+    offset = 0
+    for image_index, image_name in enumerate(os.listdir(img_folder)):
+        image_path = img_folder + str("/") +image_name
+        img =  cv2.imread(image_path)
+        segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
+        mask = []
+        for seg in segments.flatten():
+            mask.append(predicted[offset+seg])
+        mask = np.array(mask).reshape(segments.shape).tolist()
+        draw(img,mask,save_name = image_name.split('.')[0] + '_after_')
+        offset+=len(segments_label)
