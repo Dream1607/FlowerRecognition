@@ -71,16 +71,16 @@ def Label_Super_Pixels(segments, grabcut):
     # count the majority of 0/1
     for seg, value in zip(np.array(segments).flatten(),grabcut.flatten()):
         if value==0:
-            segments_cnt[seg-1]-=1
+            segments_cnt[seg]-=1
         else:
-            segments_cnt[seg-1]+=1
+            segments_cnt[seg]+=1
     segments_label = [1 if cnt>0 else 0 for cnt in segments_cnt]
 
     rows,columns = np.array(segments).shape
     segments_pixels = [[0 for col in range(columns)] for row in range(rows)]
     for i in range(rows):
         for j in range(columns):
-            segments_pixels[i][j] = segments_label[segments[i][j]-1]
+            segments_pixels[i][j] = segments_label[segments[i][j]]
 
     return segments,segments_pixels,segments_label
 
