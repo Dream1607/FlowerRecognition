@@ -34,30 +34,42 @@ def draw(img,mask,save_name = False):
                             wspace=None, hspace=None)
         plt.savefig(save_name+'_result.jpg')
 
-def Grab_Cut(img):
+def Grab_Cut(img, segmentation_mask = None, save_name = False):
     height, weight, rgb = img.shape
-
-    # mask initialized to PR_BG
-    mask = np.zeros(img.shape[:2],np.uint8)
-
-    # the coordinates of a rectangle which includes the foreground object in the format (x,y,w,h)
-    rect = (50,50,weight - 150,height - 100)
 
     bgdModel = np.zeros((1,65),np.float64)
     fgdModel = np.zeros((1,65),np.float64)
 
-    cv2.grabCut(img,mask,rect,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_RECT)
+    if segmentation_mask == None:
+        # mask initialized to PR_BG
+        mask = np.zeros(img.shape[:2],np.uint8)
 
-    mask2 = np.where((mask==2)|(mask==0),0,1).astype('uint8')
+        # the coordinates of a rectangle which includes the foreground object in the format (x,y,w,h)
+        rect = (50,50,weight - 150,height - 100)
+        cv2.grabCut(img,mask,rect,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_RECT)
+    else:
+        mask = np.array(segmentation_mask,np.uint8) * 3
+        rect = (50,50,weight - 150,height - 100)
+        cv2.grabCut(img,mask,rect,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_MASK)
 
-    return mask2
+    result = np.where((mask==2)|(mask==0),0,1).astype('uint8')
+
+    if segmentation_mask != None:
+        img = img*result[:,:,np.newaxis]
+        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        plt.axis('off')
+        plt.subplots_adjust(left=None, bottom=None, right=None, top=None,
+                                wspace=None, hspace=None)
+        plt.savefig(save_name+'_final_result.jpg')
+
+    return result
 
 def Super_Pixels(img_name):
     # load the image and convert it to a floating point data type
     image = img_as_float(io.imread(img_name))
 
 	# apply SLIC and extract (approximately) the supplied number
-    numSegments = 100
+    numSegments = 200
     
     # of segments
     segments = slic(image, n_segments = numSegments, sigma = 5)
@@ -406,5 +418,6 @@ if __name__ == "__main__":
         for seg in segments.flatten():
             mask.append(predicted[offset+seg])
         mask = np.array(mask).reshape(segments.shape).tolist()
+        Grab_Cut(img, mask,save_name = image_name.split('.')[0] + '_after_')
         draw(img,mask,save_name = image_name.split('.')[0] + '_after_')
         offset+=len(segments_label)
