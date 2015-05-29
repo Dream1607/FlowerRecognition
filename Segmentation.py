@@ -19,6 +19,8 @@ from skimage.measure import block_reduce
 from sklearn import svm
 from sklearn import datasets,metrics
 
+
+#################### 整合Grab_Cut里的画图方法
 def draw(img,mask,save_name = False):
     rows,columns,rgb = img.shape
 
@@ -43,6 +45,8 @@ def Grab_Cut(img, segmentation_mask = None, save_name = False):
     if segmentation_mask == None:
         # mask initialized to PR_BG
         mask = np.zeros(img.shape[:2],np.uint8)
+
+#################### rect参数需要居中调整
 
         # the coordinates of a rectangle which includes the foreground object in the format (x,y,w,h)
         rect = (50,50,weight - 150,height - 100)
@@ -71,6 +75,8 @@ def Super_Pixels(img_name):
 	# apply SLIC and extract (approximately) the supplied number
     numSegments = 200
     
+#################### slic参数待定
+
     # of segments
     segments = slic(image, n_segments = numSegments, sigma = 5)
 
@@ -97,6 +103,8 @@ def Label_Super_Pixels(segments, grabcut):
     return segments,segments_pixels,segments_label
 
 def SuperPixels_Segmentation_Adjust(features, label):
+#################### svm参数待定
+
     # features are all the superpixels' features of the same class
     clf = svm.LinearSVC(loss='l1',C=10)
     clf.fit(features,label)
@@ -244,6 +252,8 @@ def Class_Size_Features_Extract(img_folder):
 
     # Set flags (Just to avoid line break in the code)
     flags = cv2.KMEANS_RANDOM_CENTERS
+
+#################### kmeans参数待定，下同
 
     # Apply KMeans
     compactness,labels,centers = cv2.kmeans(Class_Size_Features,2,None,criteria,10,flags)
