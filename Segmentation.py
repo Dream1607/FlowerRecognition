@@ -47,8 +47,6 @@ def Grab_Cut(img, segmentation_mask = None, save_name = False):
         # mask initialized to PR_BG
         mask = np.zeros(img.shape[:2],np.uint8)
 
-#################### rect参数需要居中调整
-
         # the coordinates of a rectangle which includes the foreground object in the format (x,y,w,h)
         rect = (int(0.15 * weight),int(0.15 * height),int(0.7 * weight),int(0.7 * height))
         cv2.grabCut(img,mask,rect,bgdModel,fgdModel,5,cv2.GC_INIT_WITH_RECT)
@@ -60,18 +58,7 @@ def Grab_Cut(img, segmentation_mask = None, save_name = False):
     result = np.where((mask==2)|(mask==0),0,1).astype('uint8')
 
     if segmentation_mask != None:
-        img = img * result[:,:,np.newaxis]
-
-        f = open(save_name + 'segmentation_result.txt', 'w')
-        for row in img.tolist():
-            f.write("%s\n" % row)
-        f.close()
-
-        plt.imshow(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-        plt.axis('off')
-        plt.subplots_adjust(left=None, bottom=None, right=None, top=None,
-                                wspace=None, hspace=None)
-        plt.savefig(save_name + '_final_result.jpg')
+        draw(img,result,save_name = save_name)
 
     return result
 
@@ -437,6 +424,6 @@ if __name__ == "__main__":
             mask.append(predicted[offset + seg])
         mask = np.array(mask).reshape(segments.shape).tolist()
 
-        Grab_Cut(img, mask,save_name = image_name.split('.')[0] + '_after_')
+        Grab_Cut(img,mask,save_name = image_name.split('.')[0]+"_final_")
 
         offset += len(segments_label)
