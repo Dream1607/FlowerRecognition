@@ -202,9 +202,6 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
         segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
         Labels+=segments_label
 
-        ### Save figs before segmentation
-        draw(img,segments_pixels,save_name = image_name.split('.')[0])
-
         ### Get Single Image's Superpixels Location, Shape, Center & Boundary Features
         Center_Boundary_Features = Center_Boundary(segments,segments_label)
         Location_Shape_Features = Location_Shape(img,segments,segments_label)
@@ -424,6 +421,6 @@ if __name__ == "__main__":
             mask.append(predicted[offset + seg])
         mask = np.array(mask).reshape(segments.shape).tolist()
 
-        Grab_Cut(img,mask,save_name = image_name.split('.')[0]+"_final_")
+        Grab_Cut(img,mask,save_name = "seg_image/" + image_name.split('.')[0] + "_final_")
 
         offset += len(segments_label)
