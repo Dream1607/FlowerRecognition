@@ -22,6 +22,8 @@ from skimage.measure import block_reduce
 
 from sklearn import svm
 from sklearn import datasets,metrics
+from sklearn.kernel_approximation import AdditiveChi2Sampler
+
 
 def Color_Features_Extract(img_folder):
     print "Color_Features_Extract Start"
@@ -46,7 +48,7 @@ def Color_Features_Extract(img_folder):
                 if pixel_index % 3 == 0 and np.array_equal(image[x][y],back) == False:
                     Color_Features.append(image[x][y].tolist())
                 pixel_index += 1
-    
+
     # Get CodeBook of Color_Features
     Color_Features = np.float32(Color_Features)
 
@@ -67,7 +69,7 @@ def Color_Features_Extract(img_folder):
         image_path = img_folder + str("/") +image_name
         image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2LAB)
         rows, columns, lab = image.shape
-        
+
         pixel_index = 0
 
         for x in range(rows):
@@ -136,7 +138,7 @@ class DsiftExtractor:
         sample_ph, sample_pw = np.meshgrid(sample_p,sample_p)
         sample_ph.resize(sample_ph.size)
         sample_pw.resize(sample_pw.size)
-        bincenter = np.array(range(1,Nbins*2,2)) / 2.0 / Nbins * self.pS - 0.5 
+        bincenter = np.array(range(1,Nbins*2,2)) / 2.0 / Nbins * self.pS - 0.5
         bincenter_h, bincenter_w = np.meshgrid(bincenter,bincenter)
         bincenter_h.resize((bincenter_h.size,1))
         bincenter_w.resize((bincenter_w.size,1))
@@ -150,7 +152,7 @@ class DsiftExtractor:
         self.weights = weights_h * weights_w
         #pyplot.imshow(self.weights)
         #pyplot.show()
-        
+
     def process_image(self, image, positionNormalize = True,\
                        verbose = True):
         '''
@@ -289,7 +291,7 @@ def Multi_Scale_Dense_SIFT_Features_Extract(seg_img_folder):
     print "Time: " + str((endtime - starttime).seconds) + "s"
     print "Multi_Scale_Dense_SIFT_Features_Extract End"
 
-    return Image_Multi_Scale_Dense_SIFT_Features    
+    return Image_Multi_Scale_Dense_SIFT_Features
 
 
 def Interest_Point_SIFT_Features_Extract(seg_img_folder):
@@ -414,4 +416,27 @@ def Get_Features(seg_img_folder):
 if __name__ == "__main__":
 	seg_img_folder = 'seg_image'
 
-	Get_Features(seg_img_folder)
+    ### STILL NEED READ LABEL DATA
+
+
+	features = Get_Features(seg_img_folder)
+
+    ### features.shape is (n_samples,n_features)
+    ### trans_features.shape is (n_samples,3*n_features)
+    transformer = AdditiveChi2Sampler(sample_steps=2,sample_interval=0.7)
+    trans_features = transformer.fit_transform(features)
+    # print trans_features
+
+
+    clf = svm.LinearSVC()
+    clf.fit(trans_features,label)
+
+    ### STILL NEED TO SEPARATE TRAIN AND TEST DATA ACCORDING TO CLASS
+
+    # predict itself
+    predicted = clf.predict(trans_features)
+
+    # report
+    print "Classification report for classifier %s:\n%s\n" % (
+    clf, metrics.classification_report(label, predicted))
+    print "Confusion matrix:\n%s" % metrics.confusion_matrix(label, predicted)
