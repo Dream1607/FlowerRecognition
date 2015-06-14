@@ -403,9 +403,10 @@ def Boundary_SIFT_Features_Extract(seg_img_folder):
     return Image_Boundary_SIFT_Features
 
 def Get_Features(seg_img_folder):
-
+    Color_Features = Color_Features_Extract(seg_img_folder)
     Multi_Scale_Dense_SIFT_Features = Multi_Scale_Dense_SIFT_Features_Extract(seg_img_folder)
-
+    Interest_Point_SIFT_Features = Interest_Point_SIFT_Features_Extract(seg_img_folder)
+    Boundary_SIFT_Features = Boundary_SIFT_Features_Extract(seg_img_folder)
 
     Features = [ x + y + z + w for x,y,z,w in zip(Color_Features,Multi_Scale_Dense_SIFT_Features,Interest_Point_SIFT_Features,Boundary_SIFT_Features)]
 
