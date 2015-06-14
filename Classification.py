@@ -1,28 +1,17 @@
 # -*- coding: utf-8 -*-
 import cv2
 import cPickle as pickle
-
 import numpy as np
-
 import os
 import sys
 import math
 import datetime
-
 from pylab import *
-
-from PIL import Image
 from scipy import signal
-from matplotlib import pyplot as plt
-
-from skimage import io
-from skimage.util import img_as_float
-from skimage.segmentation import slic
-from skimage.measure import block_reduce
-
 from sklearn import svm
 from sklearn import datasets,metrics
 from sklearn.kernel_approximation import AdditiveChi2Sampler
+from sklearn.cross_validation import train_test_split
 
 
 def Color_Features_Extract(img_folder):
@@ -415,29 +404,40 @@ def Get_Features(seg_img_folder):
 
 # main function
 if __name__ == "__main__":
-	seg_img_folder = 'seg_image'
+    seg_img_folder = 'seg_image'
 
-    ### STILL NEED READ LABEL DATA
+    features_file = open('features.txt','w+')
+    trans_features_file = open('trans_features.txt','w+')
+    label_file = open('label.txt','r+')
 
+    ### read label from label_file
 
-	features = Get_Features(seg_img_folder)
+    features = Get_Features(seg_img_folder)
+
+    for img_feature in features:
+        features_file.write(','.join(map(str,img_feature))+'\n')
 
     ### features.shape is (n_samples,n_features)
     ### trans_features.shape is (n_samples,3*n_features)
     transformer = AdditiveChi2Sampler(sample_steps=2,sample_interval=0.7)
     trans_features = transformer.fit_transform(features)
     # print trans_features
+    for trans in trans_features:
+        trans_features_file.write(','.join(map(str,trans))+'\n')
 
+
+    rng = np.random.RandomState(42)
+    train_data, test_data, train_label, test_label = train_test_split(trans_features, label, test_size=0.7, random_state=rng)
 
     clf = svm.LinearSVC()
-    clf.fit(trans_features,label)
+    clf.fit(train_data,train_label)
 
     ### STILL NEED TO SEPARATE TRAIN AND TEST DATA ACCORDING TO CLASS
 
     # predict itself
-    predicted = clf.predict(trans_features)
+    predicted = clf.predict(test_data)
 
     # report
     print "Classification report for classifier %s:\n%s\n" % (
-    clf, metrics.classification_report(label, predicted))
-    print "Confusion matrix:\n%s" % metrics.confusion_matrix(label, predicted)
+    clf, metrics.classification_report(test_label, predicted))
+    print "Confusion matrix:\n%s" % metrics.confusion_matrix(test_label, predicted)

@@ -132,7 +132,7 @@ def Segment_Mask(segments,label):
     # mark 1 for particular label of segments
     # mark 0 for other pixels
 
-    mask = [1 if i^label==0 else 0 for i in segments.flatten()]
+    mask = [1 if i == label else 0 for i in segments.flatten()]
     return np.array(mask, np.uint8).reshape(segments.shape)
 
 def Location_Shape(img,segments,segments_label):
