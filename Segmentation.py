@@ -146,10 +146,12 @@ def Location_Shape(img,segments,segments_label):
 
         ### Get Location Features
         # Downsample to 6*6
-        downsample = block_reduce(seg_mask, block_size=(location_block_row, location_block_col), cval = 0, func=np.max)
-
-        # Convert to 36-D Location Features
-        Location_Features = downsample.flatten().tolist()
+        try:
+            downsample = block_reduce(seg_mask, block_size=(location_block_row, location_block_col), cval = 0, func=np.max)
+            # Convert to 36-D Location Features
+            Location_Features = downsample.flatten().tolist()
+        except:
+            Location_Features = [0 for x in range(36)]
 
         ### Get Shape Features
         # Bounding Box
@@ -171,10 +173,13 @@ def Location_Shape(img,segments,segments_label):
         cropped_row,cropped_col = cropped_mask.shape
         cropped_block_row = int(math.ceil(cropped_row/6.))
         cropped_block_col = int(math.ceil(cropped_col/6.))
-        downsample = block_reduce(cropped_mask, block_size=(cropped_block_row, cropped_block_col), cval = 0, func=np.max)
 
-        # Convert to 36-D Shape Features
-        Shape_Features = downsample.flatten().tolist()
+        try:
+            downsample = block_reduce(cropped_mask, block_size=(cropped_block_row, cropped_block_col), cval = 0, func=np.max)
+            # Convert to 36-D Shape Features
+            Shape_Features = downsample.flatten().tolist()
+        except:
+            Shape_Features = [0 for x in range(36)]
 
         Location_Shape_Features.append(Location_Features+Shape_Features)
 
@@ -188,7 +193,6 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
     Labels = []
     ### IMAGES SHOULD BE READ IN ORDER!!!
     for index, image_name in enumerate(os.listdir(img_folder)):
-        print image_name
         image_path = img_folder + str("/") + image_name
         img = cv2.imread(image_path)
 
@@ -203,6 +207,8 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
         for i in range(len(segments_label)):
             Features = Center_Boundary_Features[i] + Location_Shape_Features[i]
             Class_Location_Shape_CB_Features.append(map(int,Features))
+
+        print image_name
 
     endtime = datetime.datetime.now()
     print "Time: " + str((endtime - starttime).seconds) + "s"
@@ -308,6 +314,7 @@ def Class_Color_Features_Extract(img_folder):
                     Superpixel_Color_Features[segments[x][y] + superpixels_num][labels[densely_sampling_pixels_number + pixels_num]] += 1
                     densely_sampling_pixels_number += 1
                 pixel_index += 1
+        print image_name
 
     endtime = datetime.datetime.now()
     print "Time: " + str((endtime - starttime).seconds) + "s"
@@ -366,7 +373,7 @@ def Class_SIFT_Features_Extract(img_folder):
             y = int(round(input_vector[0])) if int(round(input_vector[0])) < columns else columns - 1
 
             Superpixel_SIFT_Features[segments[x][y] + num][labels[index]] += 1
-        print "image_" + str(image_index)
+        print image_name
 
     endtime = datetime.datetime.now()
     print "Time: " + str((endtime - starttime).seconds) + "s"
