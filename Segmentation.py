@@ -5,7 +5,6 @@ import cPickle as pickle
 import numpy as np
 
 import os
-import sys
 import math
 import datetime
 
@@ -20,7 +19,6 @@ from skimage.measure import block_reduce
 from sklearn import svm
 from sklearn import datasets,metrics
 
-
 def draw(img,mask,save_name = False):
     rows,columns,rgb = img.shape
 
@@ -34,7 +32,7 @@ def draw(img,mask,save_name = False):
     else:
         plt.subplots_adjust(left=None, bottom=None, right=None, top=None,
                             wspace=None, hspace=None)
-        plt.savefig(save_name+'_result.jpg')
+        plt.savefig(save_name)
 
 def Grab_Cut(img, segmentation_mask = None, save_name = False):
     height, weight, rgb = img.shape
@@ -66,7 +64,7 @@ def Super_Pixels(img_name):
     image = img_as_float(io.imread(img_name))
 
 	# apply SLIC and extract (approximately) the supplied number
-    numSegments = 200
+    numSegments = 100
 
     # of segments
     segments = slic(image, n_segments = numSegments, sigma = 5)
@@ -190,6 +188,7 @@ def Class_Location_Shape_CB_Features_Extract(img_folder):
     Labels = []
     ### IMAGES SHOULD BE READ IN ORDER!!!
     for index, image_name in enumerate(os.listdir(img_folder)):
+        print image_name
         image_path = img_folder + str("/") + image_name
         img = cv2.imread(image_path)
 
@@ -257,7 +256,6 @@ def Class_Color_Features_Extract(img_folder):
     Class_Superpixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
     Class_Pixels_Num = [0 for x in range(len(os.listdir(img_folder)))]
     Class_Color_Features = []
-
     for index, image_name in enumerate(os.listdir(img_folder)):
         image_path = img_folder + str("/") +image_name
 
@@ -409,11 +407,12 @@ if __name__ == "__main__":
         image_path = img_folder + str("/") + image_name
         img =  cv2.imread(image_path)
         segments,segments_pixels,segments_label = Label_Super_Pixels(Super_Pixels(image_path),Grab_Cut(img))
+        draw(img,segments_pixels,save_name="grab_cut/" + image_name)
         mask = []
         for seg in segments.flatten():
             mask.append(predicted[offset + seg])
         mask = np.array(mask).reshape(segments.shape).tolist()
 
-        Grab_Cut(img,mask,save_name = "seg_image/" + image_name.split('.')[0] + "_final_")
+        Grab_Cut(img,mask,save_name = "seg_image/" + image_name)
 
         offset += len(segments_label)
