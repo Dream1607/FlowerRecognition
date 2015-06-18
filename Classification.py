@@ -34,7 +34,7 @@ def Color_Features_Extract(img_folder):
 
         for x in range(rows):
             for y in range(columns):
-                if pixel_index % 3 == 0 and np.array_equal(image[x][y],back) == False:
+                if pixel_index % 9 == 0 and np.array_equal(image[x][y],back) == False:
                     Color_Features.append(image[x][y].tolist())
                 pixel_index += 1
 
@@ -63,15 +63,16 @@ def Color_Features_Extract(img_folder):
 
         for x in range(rows):
             for y in range(columns):
-                if pixel_index % 3 == 0 and np.array_equal(image[x][y],back) == False:
+                if pixel_index % 9 == 0 and np.array_equal(image[x][y],back) == False:
                     Image_Color_Features[image_index][labels[color_index]] += 1
                     color_index += 1
                 pixel_index += 1
+        print image_name
 
     endtime = datetime.datetime.now()
     print "Time: " + str((endtime - starttime).seconds) + "s"
     print "Color_Features_Extract End"
-    print Image_Color_Features
+
     return Image_Color_Features
 
 # Dense SIFT Features
@@ -94,6 +95,7 @@ def Gen_DGauss(sigma):
     GH,GW = np.gradient(G)
     GH *= 2.0/np.sum(np.abs(GH))
     GW *= 2.0/np.sum(np.abs(GW))
+
     return GH,GW
 
 class DsiftExtractor:
@@ -245,18 +247,19 @@ def Multi_Scale_Dense_SIFT_Features_Extract(seg_img_folder):
         k = 0
         for scale in [4,6,8,10]:
             extractor = DsiftExtractor(gridSpacing = scale,patchSize = 5,sigma_edge = 6)
-            feaArr,positions = extractor.process_image(img)
+            feaArr,positions = extractor.process_image(img,verbose = False)
 
             Multi_Scale_Dense_SIFT_Features += feaArr.tolist()
             k += feaArr.shape[0]
 
         Image_KeyPoints_Num[index] = k
+        print image_name
 
     # Get CodeBook of Multi_Scale_Dense_SIFT_Features
     Multi_Scale_Dense_SIFT_Features = np.float32(Multi_Scale_Dense_SIFT_Features)
 
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 2, 0.0001)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 2, 1.0)
 
     # Set flags (Just to avoid line break in the code)
     flags = cv2.KMEANS_RANDOM_CENTERS
@@ -306,6 +309,7 @@ def Interest_Point_SIFT_Features_Extract(seg_img_folder):
             k += 1
 
         Image_KeyPoints_Num[index] = k
+        print image_name
 
     # Get CodeBook of Interest_Point_SIFT_Features
     Interest_Point_SIFT_Features = np.float32(Interest_Point_SIFT_Features)
@@ -360,6 +364,7 @@ def Boundary_SIFT_Features_Extract(seg_img_folder):
 
         Image_KeyPoints_Num[index] = len(keypoints)
         Boundary_SIFT_Features += des.tolist()
+        print image_name
 
     # Get CodeBook of Boundary_SIFT_Features
     Boundary_SIFT_Features = np.float32(Boundary_SIFT_Features)
@@ -409,8 +414,6 @@ if __name__ == "__main__":
     features_file = open('features.txt','w+')
     trans_features_file = open('trans_features.txt','w+')
     label_file = open('label.txt','r+')
-
-    ### read label from label_file
 
     features = Get_Features(seg_img_folder)
 
